@@ -1,0 +1,45 @@
+- name: "create non-root user"
+  user: name=fvosburgh append=yes state=present createhome=yes shell=/bin/bash
+  become: yes
+
+- name: "allow passwordless sudo"
+  lineinfile:
+    dest: /etc/sudoers
+    line: 'fvosburgh ALL=(ALL) NOPASSWD: ALL'
+    validate: 'visudo -cf %s'
+  become: yes
+
+- name: "Associate fvosburgh user with ssh pub key"
+  authorized_key: user=fvosburgh key="{{item}}"
+  with_file:
+    - /Users/forester/.ssh/id_rsa.pub
+  become: yes
+
+- name: generate ssh keypair
+  shell: ssh-keygen -q -t rsa -N "" -f /home/fvosburgh/.ssh/id_rsa
+  args:
+    creates: /home/fvosburgh/.ssh/id_rsa
+    creates: /home/fvosburgh/.ssh/id_rsa.pub
+
+- name: slurp up the pub key
+  slurp:
+    src: /home/fvosburgh/.ssh/id_rsa.pub
+  register: public_key
+
+- name: add ssh pub key to authorized_keys
+  authorized_key:
+    user: fvosburgh
+    state: present
+    key: "{{ public_key['content'] | b64decode }}"
+
+- name: set default ssh ident file
+  copy:
+    src: files/ssh_config
+    dest: /home/fvosburgh/.ssh/config
+    owner: fvosburgh
+    group: fvosburgh
+    mode: 0644
+
+- name: reload ssh config
+  shell: service ssh restart
+  become: true

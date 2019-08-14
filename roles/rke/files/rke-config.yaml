@@ -1,0 +1,5 @@
+nodes:
+  - address: 159.89.238.57
+    internal_address: 10.136.63.24
+    user: fvosburgh
+    role: [controlplane,worker,etcd]
